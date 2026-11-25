@@ -1,39 +1,48 @@
 from langchain.agents import create_agent
 from langchain_mistralai import ChatMistralAI
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_nvidia_ai_endpoints import ChatNVIDIA
+from langchain.chat_models import init_chat_model
 
 from tools import web_search,scrape_url 
 import os
 from dotenv import load_dotenv
-load_dotenv
+load_dotenv()
 
 
-llm = ChatGoogleGenerativeAI(
-    model = "gemini-3.5-flash-lite",
-    temperature = 0
+llm1 = init_chat_model(
+    "google_genai:gemini-3.5-flash",
+    api_key=os.getenv("GEMINI_API_KEY_1"),
+    temperature=0
+)
+
+llm2 = init_chat_model(
+    "google_genai:gemini-3.5-flash",
+    api_key=os.getenv("GEMINI_API_KEY_2"),
+    temperature=0.2
 )
 
 
 def build_search_agent():
     return create_agent(
-        model = llm,
-        tools = [web_search]
+        model=llm1,
+        tools=[web_search]
     )
 
 
 def build_reader_agent():
     return create_agent(
-        model = llm,
-        tools = [scrape_url]
+        model=llm2,
+        tools=[scrape_url]
     )
     
 
 
 writer_prompt = ChatPromptTemplate.from_messages([
     ("system", "You are an expert research writer. Write clear, structured and insightful reports."),
-    ("human", """Write a detailed research report on the topic below.
+    ("human", """Write a concise research report of 600-800 words
+on the following topic:.
 
 Topic: {topic}
 
@@ -49,7 +58,7 @@ Structure the report as:
 Be detailed, factual and professional."""),
 ])
 
-writer_chain = writer_prompt | llm | StrOutputParser()
+writer_chain = writer_prompt | llm1 | StrOutputParser()
 
 #critic chain
 
@@ -76,4 +85,4 @@ One line verdict:
 ..."""),
 ])
 
-critic_chain = critic_prompt | llm | StrOutputParser()
+critic_chain = critic_prompt | llm2 | StrOutputParser()
